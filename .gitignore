@@ -1,0 +1,104 @@
+# -----------------------------------------------------------------------------
+# Go Build Artifacts
+# -----------------------------------------------------------------------------
+bin/
+build/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go Module Dependencies Cache
+# (This is local-only and should not be committed)
+pkg/
+
+# -----------------------------------------------------------------------------
+# OS / Editor / IDE Files
+# -----------------------------------------------------------------------------
+
+# macOS Finder files
+.DS_Store
+
+# Windows thumbnail cache
+Thumbs.db
+
+# VSCode
+.vscode/
+.code-workspace
+
+# Goland / JetBrains IDEs
+.idea/
+*.iml
+
+# Logs
+*.log
+logs/
+log/
+
+# -----------------------------------------------------------------------------
+# Environment & Credentials
+# -----------------------------------------------------------------------------
+
+# Do NOT commit secrets!
+.env
+.env.local
+.env.*.local
+
+# dotenv variants
+*.env
+*.envrc
+
+# -----------------------------------------------------------------------------
+# Temporary & Cache Files
+# -----------------------------------------------------------------------------
+
+tmp/
+temp/
+*.tmp
+*.cache
+cache/
+
+# Test / coverage
+*.coverprofile
+coverage/
+coverage.out
+
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+
+# Docker Compose environment overrides
+docker-compose.override.yml
+
+# Docker cache / volumes
+docker/
+volumes/
+*.tar
+*.img
+
+# -----------------------------------------------------------------------------
+# If you later add a front-end (React/Vite/Next.js)
+# -----------------------------------------------------------------------------
+
+node_modules/
+public/dist/
+dist/
+build/
+*.tsbuildinfo
+
+# -----------------------------------------------------------------------------
+# MySQL dump files / data
+# -----------------------------------------------------------------------------
+*.sql
+*.sql.gz
+
+# -----------------------------------------------------------------------------
+# Ignore compiled protobuf / swagger (if used later)
+# -----------------------------------------------------------------------------
+
+*.pb.go
+swagger/
