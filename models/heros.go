@@ -1,8 +1,10 @@
+// models/hero.go
 package models
 
+// models/hero.go
 type Hero struct {
 	ID          uint   `gorm:"primaryKey;autoIncrement"`
-	HSID        int    `gorm:"column:hs_id"` // Blizzard 卡牌 ID
+	HSID        int    `gorm:"column:hs_id;uniqueIndex"`
 	NameEN      string `gorm:"column:name_en"`
 	NameZH      string `gorm:"column:name_zh"`
 	Armor       int
@@ -14,7 +16,6 @@ type Hero struct {
 	IsSolo      bool   `gorm:"column:is_solo"`
 }
 
-// 设置表名（可选）
 func (Hero) TableName() string {
 	return "heroes"
 }

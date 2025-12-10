@@ -16,7 +16,7 @@ import (
 
 var DB *gorm.DB
 
-// ---------- 环境变量辅助 ----------
+// ---------- 获取环境变量，如果不存在则使用默认值 ----------
 func getEnv(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
@@ -32,6 +32,7 @@ type DBConfig struct {
 	Name     string
 }
 
+// ---------- 加载数据库配置 ----------
 func loadConfig() DBConfig {
 	return DBConfig{
 		User:     getEnv("DB_USER", "root"),
@@ -42,14 +43,14 @@ func loadConfig() DBConfig {
 	}
 }
 
-// ---------- 创建数据库（如果不存在） ----------
+// ---------- 创建数据库（如不存在） ----------
 func createDatabase(cfg DBConfig) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/",
 		cfg.User, cfg.Password, cfg.Host, cfg.Port)
 
 	sqlDB, err := sql.Open("mysql", dsn)
 	if err != nil {
-		log.Fatalf("MySQL 连接失败: %v", err)
+		log.Fatalf("❌ 无法连接 MySQL: %v", err)
 	}
 	defer sqlDB.Close()
 
@@ -58,39 +59,41 @@ func createDatabase(cfg DBConfig) {
 	sqlDB.SetMaxIdleConns(5)
 
 	_, err = sqlDB.Exec(
-		"CREATE DATABASE IF NOT EXISTS `" + cfg.Name + "` " +
-			"DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+		fmt.Sprintf(
+			"CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+			cfg.Name,
+		),
 	)
 	if err != nil {
-		log.Fatalf("创建数据库失败: %v", err)
+		log.Fatalf("❌ 创建数据库失败: %v", err)
 	}
 
-	log.Println("✅ 数据库存在或已创建:", cfg.Name)
+	log.Printf("✅ 数据库检查完成：%s 已存在或成功创建\n", cfg.Name)
 }
 
 // ---------- 初始化数据库 ----------
 func InitDB() {
 	cfg := loadConfig()
 
-	// 1. 确保数据库存在
+	// 1. 创建数据库（如果不存在）
 	createDatabase(cfg)
 
-	// 2. GORM 连接
+	// 2. 使用 GORM 连接数据库
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name)
 
 	var err error
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("GORM 连接数据库失败: %v", err)
+		log.Fatalf("❌ GORM 无法连接数据库: %v", err)
 	}
 
-	log.Println("✅ GORM 连接成功")
+	log.Println("✅ GORM 已成功连接数据库")
 
-	// 3. 自动迁移：只创建 Hero 表
+	// 3. 自动迁移模型
 	if err := DB.AutoMigrate(&models.Hero{}); err != nil {
-		log.Fatalf("迁移 Hero 表失败: %v", err)
+		log.Fatalf("❌ 自动迁移 Hero 表失败: %v", err)
 	}
 
-	log.Println("✅ Hero 表结构已自动迁移完成")
+	log.Println("✅ Hero 表结构已创建或更新完成")
 }

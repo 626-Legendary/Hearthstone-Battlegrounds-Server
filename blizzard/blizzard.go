@@ -2,6 +2,7 @@
 package blizzard
 
 import (
+	"bgs-server/models"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -19,7 +20,7 @@ type TokenResponse struct {
 	ExpiresIn   int    `json:"expires_in"`
 }
 
-// 用来接收战棋英雄列表（这里只取部分字段演示）
+// 用来接收战棋英雄列表
 type CardsResponse struct {
 	CardCount int `json:"cardCount"`
 	PageCount int `json:"pageCount"`
@@ -36,7 +37,7 @@ type CardsResponse struct {
 		ArtistName    string `json:"artistName"`
 		Health        int    `json:"health"`
 		ManaCost      int    `json:"manaCost"`
-		Armor         int    `json:"armor"` // 英雄护甲值
+		Armor         int    `json:"armor"`
 
 		Name       map[string]string `json:"name"`
 		Text       map[string]string `json:"text"`
@@ -100,66 +101,77 @@ func GetAccessToken(clientID, clientSecret string) (*TokenResponse, error) {
 	return &tr, nil
 }
 
-// FetchBattlegroundHero 用 Bearer token 拉取战棋英雄并打印
-func FetchBattlegroundHero(accessToken string) error {
-	region := "us" // 也可以换成 eu / kr / tw
+// GetBattlegroundHero 自动翻页，返回所有战棋英雄
+func GetBattlegroundHero(accessToken string) ([]models.Hero, error) {
+	region := "us" // us / eu / kr / tw
+	pageSize := 50
+	page := 1
 
-	pageSize := 50 // 一页多少条
-	page := 1      // 第几页
+	allHeroes := []models.Hero{}
 
-	url := fmt.Sprintf(
-		"https://%s.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds&&type=hero&pageSize=%d&page=%d",
-		region, pageSize, page,
-	)
+	for {
+		url := fmt.Sprintf(
+			"https://%s.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds&&type=hero&pageSize=%d&page=%d",
+			region, pageSize, page,
+		)
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return err
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		// 注意：在 for 里 defer 会堆积，这里直接 Close 更安全
+		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("cards 接口返回状态码 %d: %s", resp.StatusCode, string(bodyBytes))
+		}
+
+		var cr CardsResponse
+		if err := json.Unmarshal(bodyBytes, &cr); err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("✅ 英雄数据请求成功 page=%d / pageCount=%d, 本页 card=%d, 总计 card=%d\n",
+			cr.Page, cr.PageCount, len(cr.Cards), cr.CardCount)
+
+		if len(cr.Cards) == 0 {
+			break
+		}
+
+		for _, c := range cr.Cards {
+			hero := models.Hero{
+				HSID: c.ID,
+				// 现在 API 只有一个 name（locale = zh_CN），先当成中文名
+				NameEN:      c.Name["en_US"], // 以后可以再补英文
+				NameZH:      c.Name["zh_CN"], // 当前语言是 zh_CN
+				Armor:       c.Armor,
+				HeroPowerID: c.Battlegrounds.HeroPowerID,
+				CompanionID: c.Battlegrounds.CompanionID,
+				ImageEN:     c.Battlegrounds.Image["en_US"], // 以后可以用 en_US 再查
+				ImageZH:     c.Battlegrounds.Image["zh_CN"], // 当前语言图片
+				IsDuo:       c.Battlegrounds.DuosOnly,
+				IsSolo:      c.Battlegrounds.SolosOnly,
+			}
+			allHeroes = append(allHeroes, hero)
+		}
+
+		if cr.Page >= cr.PageCount {
+			break
+		}
+		page++
 	}
 
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("cards 接口返回状态码 %d: %s", resp.StatusCode, string(body))
-	}
-
-	var cr CardsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&cr); err != nil {
-		return err
-	}
-
-	fmt.Printf("✅ 英雄数据请求成功 page=%d / pageCount=%d, 共 cardCount=%d\n", cr.Page, cr.PageCount, cr.CardCount)
-
-	var heroPowerIdArr []int
-
-	for i, c := range cr.Cards {
-		cardID := c.ID
-		heroName := c.Name["en_US"]
-		heroNameZh := c.Name["zh_CN"]
-		heroArmor := c.Armor
-
-		heroPowerId := c.Battlegrounds.HeroPowerID
-		companionId := c.Battlegrounds.CompanionID
-
-		img := c.Battlegrounds.Image["en_US"]
-		imgZh := c.Battlegrounds.Image["zh_CN"]
-
-		duosOnly := c.Battlegrounds.DuosOnly
-		solosOnly := c.Battlegrounds.SolosOnly
-
-		heroPowerIdArr = append(heroPowerIdArr, heroPowerId)
-
-		fmt.Printf("%d. ID=%d, 英雄名称=%s (%s), 护甲=%d, 英雄技能ID=%d, 伙伴ID=%d, 图片=%s (%s), 双人=%v, 单人=%v\n\n",
-			i+1, cardID, heroName, heroNameZh, heroArmor, heroPowerId, companionId, img, imgZh, duosOnly, solosOnly)
-	}
-
-	fmt.Println(heroPowerIdArr)
-	return nil
+	fmt.Printf("✅ 自动翻页完成，总共收集到英雄数量: %d\n", len(allHeroes))
+	return allHeroes, nil
 }
