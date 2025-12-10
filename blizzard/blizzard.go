@@ -20,7 +20,7 @@ type TokenResponse struct {
 	ExpiresIn   int    `json:"expires_in"`
 }
 
-// 用来接收战棋英雄列表
+// 用来接收战棋英雄 / 饰品列表
 type CardsResponse struct {
 	CardCount int `json:"cardCount"`
 	PageCount int `json:"pageCount"`
@@ -48,6 +48,9 @@ type CardsResponse struct {
 		CropImage string `json:"cropImage"`
 		ChildIDs  []int  `json:"childIds"`
 
+		// 官方返回是 []int，这里直接按列表来处理即可
+		GameModes []int `json:"gameModes"`
+
 		IsZilliaxFunctionalModule bool `json:"isZilliaxFunctionalModule"`
 		IsZilliaxCosmeticModule   bool `json:"isZilliaxCosmeticModule"`
 
@@ -66,9 +69,22 @@ type CardsResponse struct {
 	} `json:"cards"`
 }
 
+// 关键词 metadata 接口返回结构
+type KeywordMeta struct {
+	ID   int               `json:"id"`
+	Slug string            `json:"slug"`
+	Name map[string]string `json:"name"`
+
+	Text      map[string]string `json:"text"` // 带 <b> 的富文本
+	GameModes []int             `json:"gameModes"`
+}
+
 // GetAccessToken 向 https://oauth.battle.net/token 发送 POST 请求，获取 access_token
 func GetAccessToken(clientID, clientSecret string) (*TokenResponse, error) {
 	endpoint := os.Getenv("OAuth_URL")
+	if endpoint == "" {
+		endpoint = "https://oauth.battle.net/token"
+	}
 
 	data := url.Values{}
 	data.Set("grant_type", "client_credentials")
@@ -111,7 +127,7 @@ func GetHeroCards(accessToken string) ([]models.Heroes, error) {
 
 	for {
 		url := fmt.Sprintf(
-			"https://%s.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds&&type=hero&pageSize=%d&page=%d",
+			"https://%s.api.blizzard.com/hearthstone/cards?gameMode=battlegrounds&type=hero&pageSize=%d&page=%d",
 			region, pageSize, page,
 		)
 
@@ -126,7 +142,6 @@ func GetHeroCards(accessToken string) ([]models.Heroes, error) {
 			return nil, err
 		}
 
-		// 注意：在 for 里 defer 会堆积，这里直接 Close 更安全
 		bodyBytes, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
@@ -175,6 +190,7 @@ func GetHeroCards(accessToken string) ([]models.Heroes, error) {
 	return allHeroes, nil
 }
 
+// 大饰品
 func GetGreaterTrinketsCards(accessToken string) ([]models.Trinkets, error) {
 	/*
 		https://us.api.blizzard.com/hearthstone/cards?type=trinket&gameMode=battlegrounds&spellSchool=greater_trinket
@@ -202,7 +218,6 @@ func GetGreaterTrinketsCards(accessToken string) ([]models.Trinkets, error) {
 			return nil, err
 		}
 
-		// 注意：在 for 里 defer 会堆积，这里直接 Close 更安全
 		bodyBytes, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
@@ -218,7 +233,7 @@ func GetGreaterTrinketsCards(accessToken string) ([]models.Trinkets, error) {
 			return nil, err
 		}
 
-		fmt.Printf("✅ <大饰品数据>请求成功 page=%d / pageCount=%d, 本页 card=%d, 总计 card=%d\n",
+		fmt.Printf("✅ <大饰品数据> 请求成功 page=%d / pageCount=%d, 本页 card=%d, 总计 card=%d\n",
 			cr.Page, cr.PageCount, len(cr.Cards), cr.CardCount)
 
 		if len(cr.Cards) == 0 {
@@ -235,7 +250,7 @@ func GetGreaterTrinketsCards(accessToken string) ([]models.Trinkets, error) {
 				TextZH:      c.Text["zh_CN"],
 				ImageEN:     c.Battlegrounds.Image["en_US"],
 				ImageZH:     c.Battlegrounds.Image["zh_CN"],
-				TrinketType: 2,
+				TrinketType: 2, // 2 = greater
 			}
 			allTrinkets = append(allTrinkets, trinket)
 		}
@@ -246,14 +261,14 @@ func GetGreaterTrinketsCards(accessToken string) ([]models.Trinkets, error) {
 		page++
 	}
 
-	fmt.Printf("✅ 自动翻页完成，总共收集到英雄数量: %d\n", len(allTrinkets))
+	fmt.Printf("✅ 自动翻页完成，总共收集到大饰品数量: %d\n", len(allTrinkets))
 	return allTrinkets, nil
 }
 
 // 小饰品
 func GetLesserTrinketsCards(accessToken string) ([]models.Trinkets, error) {
 	/*
-		https://us.api.blizzard.com/hearthstone/cards?type=trinket&gameMode=battlegrounds&spellSchool=greater_trinket
+		https://us.api.blizzard.com/hearthstone/cards?type=trinket&gameMode=battlegrounds&spellSchool=lesser_trinket
 	*/
 	region := "us" // us / eu / kr / tw
 	pageSize := 50
@@ -278,7 +293,6 @@ func GetLesserTrinketsCards(accessToken string) ([]models.Trinkets, error) {
 			return nil, err
 		}
 
-		// 注意：在 for 里 defer 会堆积，这里直接 Close 更安全
 		bodyBytes, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
@@ -294,7 +308,7 @@ func GetLesserTrinketsCards(accessToken string) ([]models.Trinkets, error) {
 			return nil, err
 		}
 
-		fmt.Printf("✅ <小饰品数据>请求成功 page=%d / pageCount=%d, 本页 card=%d, 总计 card=%d\n",
+		fmt.Printf("✅ <小饰品数据> 请求成功 page=%d / pageCount=%d, 本页 card=%d, 总计 card=%d\n",
 			cr.Page, cr.PageCount, len(cr.Cards), cr.CardCount)
 
 		if len(cr.Cards) == 0 {
@@ -311,7 +325,7 @@ func GetLesserTrinketsCards(accessToken string) ([]models.Trinkets, error) {
 				TextZH:      c.Text["zh_CN"],
 				ImageEN:     c.Battlegrounds.Image["en_US"],
 				ImageZH:     c.Battlegrounds.Image["zh_CN"],
-				TrinketType: 1,
+				TrinketType: 1, // 1 = lesser
 			}
 			allTrinkets = append(allTrinkets, trinket)
 		}
@@ -322,6 +336,139 @@ func GetLesserTrinketsCards(accessToken string) ([]models.Trinkets, error) {
 		page++
 	}
 
-	fmt.Printf("✅ 自动翻页完成，总共收集到英雄数量: %d\n", len(allTrinkets))
+	fmt.Printf("✅ 自动翻页完成，总共收集到小饰品数量: %d\n", len(allTrinkets))
 	return allTrinkets, nil
+}
+
+// GetKeywords 拉取 keyword metadata，并筛选只在战棋模式(battlegrounds)中使用的关键词
+func GetKeywords(accessToken string) ([]models.Keywords, error) {
+	/*
+		https://us.api.blizzard.com/hearthstone/metadata/keywords
+	*/
+	region := "us" // us / eu / kr / tw
+	url := fmt.Sprintf("https://%s.api.blizzard.com/hearthstone/metadata/keywords", region)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("keywords 接口返回状态码 %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var metas []KeywordMeta
+	if err := json.Unmarshal(bodyBytes, &metas); err != nil {
+		return nil, err
+	}
+
+	allKeywords := []models.Keywords{}
+	const battlegroundsMode = 2 // gameModes 里包含 2 表示战棋
+
+	for _, m := range metas {
+		// 只保留战棋相关的关键词
+		if !containsInt(m.GameModes, battlegroundsMode) {
+			continue
+		}
+
+		kw := models.Keywords{
+			HSID:   m.ID,
+			NameEN: m.Name["en_US"],
+			NameZH: m.Name["zh_CN"],
+
+			TextEN: m.Text["en_US"],
+			TextZH: m.Text["zh_CN"],
+			// Minions 多对多关联先不用填，等后面用 keywordIds 反查再补
+		}
+		allKeywords = append(allKeywords, kw)
+	}
+
+	fmt.Printf("✅ Keyword 元数据拉取完成，战棋相关关键词数量: %d\n", len(allKeywords))
+	return allKeywords, nil
+}
+
+// 小工具函数：判断切片里是否包含某个 int
+func containsInt(list []int, target int) bool {
+	for _, v := range list {
+		if v == target {
+			return true
+		}
+	}
+	return false
+}
+
+// _______________________________________________________
+// GetQuests 获取战棋任务牌（quest spells）
+func GetQuests(accessToken string) ([]models.Quests, error) {
+	/*
+		https://us.api.blizzard.com/hearthstone/cards?type=spell&gameMode=battlegrounds&sort=quest
+	*/
+	region := "us" // us / eu / kr / tw
+	url := fmt.Sprintf(
+		"https://%s.api.blizzard.com/hearthstone/cards?type=spell&gameMode=battlegrounds&sort=quest",
+		region,
+	)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("quests 接口返回状态码 %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// 这里是单个 CardsResponse 对象，不是数组
+	var cr CardsResponse
+	if err := json.Unmarshal(bodyBytes, &cr); err != nil {
+		return nil, err
+	}
+
+	allQuests := []models.Quests{}
+
+	for _, c := range cr.Cards {
+		// 如果你只想要真正标记为 quest 的牌，可以再加个保护：
+		// if !c.Battlegrounds.Quest { continue }
+
+		q := models.Quests{
+			HSID: c.ID,
+
+			NameEN: c.Name["en_US"],
+			NameZH: c.Name["zh_CN"],
+
+			TextEN: c.Text["en_US"],
+			TextZH: c.Text["zh_CN"],
+
+			ImageEN: c.Battlegrounds.Image["en_US"],
+			ImageZH: c.Battlegrounds.Image["zh_CN"],
+		}
+		allQuests = append(allQuests, q)
+	}
+
+	fmt.Printf("✅ 任务数据拉取完成，战棋任务数量: %d\n", len(allQuests))
+	return allQuests, nil
 }
