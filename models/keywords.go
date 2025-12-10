@@ -1,7 +1,5 @@
-// models/hero.go
 package models
 
-// models/hero.go
 type Keywords struct {
 	ID      uint      `gorm:"primaryKey;autoIncrement"`
 	HSID    int       `gorm:"column:hs_id;uniqueIndex"`

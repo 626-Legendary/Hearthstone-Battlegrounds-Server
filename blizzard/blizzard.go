@@ -101,8 +101,8 @@ func GetAccessToken(clientID, clientSecret string) (*TokenResponse, error) {
 	return &tr, nil
 }
 
-// GetBattlegroundHero 自动翻页，返回所有战棋英雄
-func GetBattlegroundHero(accessToken string) ([]models.Heroes, error) {
+// 自动翻页，返回所有战棋英雄
+func GetHeroCards(accessToken string) ([]models.Heroes, error) {
 	region := "us" // us / eu / kr / tw
 	pageSize := 50
 	page := 1
@@ -151,15 +151,14 @@ func GetBattlegroundHero(accessToken string) ([]models.Heroes, error) {
 
 		for _, c := range cr.Cards {
 			hero := models.Heroes{
-				HSID: c.ID,
-				// 现在 API 只有一个 name（locale = zh_CN），先当成中文名
-				NameEN:      c.Name["en_US"], // 以后可以再补英文
-				NameZH:      c.Name["zh_CN"], // 当前语言是 zh_CN
+				HSID:        c.ID,
+				NameEN:      c.Name["en_US"],
+				NameZH:      c.Name["zh_CN"],
 				Armor:       c.Armor,
 				HeroPowerID: c.Battlegrounds.HeroPowerID,
 				CompanionID: c.Battlegrounds.CompanionID,
-				ImageEN:     c.Battlegrounds.Image["en_US"], // 以后可以用 en_US 再查
-				ImageZH:     c.Battlegrounds.Image["zh_CN"], // 当前语言图片
+				ImageEN:     c.Battlegrounds.Image["en_US"],
+				ImageZH:     c.Battlegrounds.Image["zh_CN"],
 				IsDuo:       c.Battlegrounds.DuosOnly,
 				IsSolo:      c.Battlegrounds.SolosOnly,
 			}
@@ -174,4 +173,155 @@ func GetBattlegroundHero(accessToken string) ([]models.Heroes, error) {
 
 	fmt.Printf("✅ 自动翻页完成，总共收集到英雄数量: %d\n", len(allHeroes))
 	return allHeroes, nil
+}
+
+func GetGreaterTrinketsCards(accessToken string) ([]models.Trinkets, error) {
+	/*
+		https://us.api.blizzard.com/hearthstone/cards?type=trinket&gameMode=battlegrounds&spellSchool=greater_trinket
+	*/
+	region := "us" // us / eu / kr / tw
+	pageSize := 50
+	page := 1
+
+	allTrinkets := []models.Trinkets{}
+
+	for {
+		url := fmt.Sprintf(
+			"https://%s.api.blizzard.com/hearthstone/cards?type=trinket&gameMode=battlegrounds&spellSchool=greater_trinket&pageSize=%d&page=%d",
+			region, pageSize, page,
+		)
+
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		// 注意：在 for 里 defer 会堆积，这里直接 Close 更安全
+		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("cards 接口返回状态码 %d: %s", resp.StatusCode, string(bodyBytes))
+		}
+
+		var cr CardsResponse
+		if err := json.Unmarshal(bodyBytes, &cr); err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("✅ <大饰品数据>请求成功 page=%d / pageCount=%d, 本页 card=%d, 总计 card=%d\n",
+			cr.Page, cr.PageCount, len(cr.Cards), cr.CardCount)
+
+		if len(cr.Cards) == 0 {
+			break
+		}
+
+		for _, c := range cr.Cards {
+			trinket := models.Trinkets{
+				HSID:        c.ID,
+				NameEN:      c.Name["en_US"],
+				NameZH:      c.Name["zh_CN"],
+				ManaCost:    c.ManaCost,
+				TextEN:      c.Text["en_US"],
+				TextZH:      c.Text["zh_CN"],
+				ImageEN:     c.Battlegrounds.Image["en_US"],
+				ImageZH:     c.Battlegrounds.Image["zh_CN"],
+				TrinketType: 2,
+			}
+			allTrinkets = append(allTrinkets, trinket)
+		}
+
+		if cr.Page >= cr.PageCount {
+			break
+		}
+		page++
+	}
+
+	fmt.Printf("✅ 自动翻页完成，总共收集到英雄数量: %d\n", len(allTrinkets))
+	return allTrinkets, nil
+}
+
+// 小饰品
+func GetLesserTrinketsCards(accessToken string) ([]models.Trinkets, error) {
+	/*
+		https://us.api.blizzard.com/hearthstone/cards?type=trinket&gameMode=battlegrounds&spellSchool=greater_trinket
+	*/
+	region := "us" // us / eu / kr / tw
+	pageSize := 50
+	page := 1
+
+	allTrinkets := []models.Trinkets{}
+
+	for {
+		url := fmt.Sprintf(
+			"https://%s.api.blizzard.com/hearthstone/cards?type=trinket&gameMode=battlegrounds&spellSchool=lesser_trinket&pageSize=%d&page=%d",
+			region, pageSize, page,
+		)
+
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		// 注意：在 for 里 defer 会堆积，这里直接 Close 更安全
+		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("cards 接口返回状态码 %d: %s", resp.StatusCode, string(bodyBytes))
+		}
+
+		var cr CardsResponse
+		if err := json.Unmarshal(bodyBytes, &cr); err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("✅ <小饰品数据>请求成功 page=%d / pageCount=%d, 本页 card=%d, 总计 card=%d\n",
+			cr.Page, cr.PageCount, len(cr.Cards), cr.CardCount)
+
+		if len(cr.Cards) == 0 {
+			break
+		}
+
+		for _, c := range cr.Cards {
+			trinket := models.Trinkets{
+				HSID:        c.ID,
+				NameEN:      c.Name["en_US"],
+				NameZH:      c.Name["zh_CN"],
+				ManaCost:    c.ManaCost,
+				TextEN:      c.Text["en_US"],
+				TextZH:      c.Text["zh_CN"],
+				ImageEN:     c.Battlegrounds.Image["en_US"],
+				ImageZH:     c.Battlegrounds.Image["zh_CN"],
+				TrinketType: 1,
+			}
+			allTrinkets = append(allTrinkets, trinket)
+		}
+
+		if cr.Page >= cr.PageCount {
+			break
+		}
+		page++
+	}
+
+	fmt.Printf("✅ 自动翻页完成，总共收集到英雄数量: %d\n", len(allTrinkets))
+	return allTrinkets, nil
 }

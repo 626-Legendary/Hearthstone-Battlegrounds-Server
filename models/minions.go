@@ -16,7 +16,7 @@ type Minions struct {
 	UpgradeImageEN string `gorm:"column:upgrade_image_en"` // 金卡图片路径
 	UpgradeImageZH string `gorm:"column:upgrade_image_zh"`
 	IsDuo          bool   `gorm:"column:is_duo"`
-	IsSolo         bool   `gorm:"column:is_solo"`
+	IsSolo         bool   `gorm:"column:is_solo123"`
 
 	Classes  []Classes  `gorm:"many2many:class_minions;"`
 	Keywords []Keywords `gorm:"many2many:keyword_minions;"`

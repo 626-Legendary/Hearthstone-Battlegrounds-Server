@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	// 读取 .env
 	_ = godotenv.Load()
 
 	clientID := os.Getenv("BLIZZARD_CLIENT_ID")
@@ -21,8 +22,9 @@ func main() {
 		log.Fatal("请在 .env 中配置 BLIZZARD_CLIENT_ID 和 BLIZZARD_CLIENT_SECRET")
 	}
 
-	// 1. 初始化数据库（建库 + heroes 表）
+	// 1. 初始化数据库（建库 + 表）
 	database.InitDB()
+	db := database.DB
 
 	// 2. 拿 token
 	tokenResp, err := blizzard.GetAccessToken(clientID, clientSecret)
@@ -31,15 +33,13 @@ func main() {
 	}
 
 	// 3. 自动翻页获取所有英雄
-	heroes, err := blizzard.GetBattlegroundHero(tokenResp.AccessToken)
+	heroes, err := blizzard.GetHeroCards(tokenResp.AccessToken)
 	if err != nil {
 		log.Fatalf("获取战棋英雄失败: %v", err)
 	}
 	log.Printf("准备写入英雄数量: %d\n", len(heroes))
 
-	// 4. 写入数据库：hs_id 存在则更新，不存在则创建
-	db := database.DB
-
+	// 4. 写入英雄：hs_id 存在则更新，不存在则创建
 	err = db.Clauses(
 		clause.OnConflict{
 			Columns: []clause.Column{{Name: "hs_id"}}, // 根据 hs_id 判断冲突
@@ -61,4 +61,60 @@ func main() {
 	}
 
 	log.Println("✅ 酒馆战旗<英雄数据>数据库同步完成")
+
+	// 5. 自动翻页获取大饰品
+	GreaterTrinkets, err := blizzard.GetGreaterTrinketsCards(tokenResp.AccessToken)
+	if err != nil {
+		log.Fatalf("获取大饰品失败: %v", err)
+	}
+	log.Printf("准备写入大饰品数量: %d\n", len(GreaterTrinkets))
+
+	// 6. 写入大饰品：hs_id 存在则更新，不存在则创建
+	err = db.Clauses(
+		clause.OnConflict{
+			Columns: []clause.Column{{Name: "hs_id"}}, // 根据 hs_id 判断冲突
+			DoUpdates: clause.AssignmentColumns([]string{
+				"name_en",
+				"name_zh",
+				"mana_cost",
+				"text_en",
+				"text_zh",
+				"image_en",
+				"image_zh",
+				"trinket_type",
+			}),
+		},
+	).Create(&GreaterTrinkets).Error
+	if err != nil {
+		log.Fatalf("写入<饰品数据>到数据库失败: %v", err)
+	}
+
+	// 6. 自动翻页获取小饰品
+	lesserTrinkets, err := blizzard.GetLesserTrinketsCards(tokenResp.AccessToken)
+	if err != nil {
+		log.Fatalf("获取小饰品失败: %v", err)
+	}
+	log.Printf("准备写入小饰品数量: %d\n", len(lesserTrinkets))
+
+	// 6. 写入小饰品：hs_id 存在则更新，不存在则创建
+	err = db.Clauses(
+		clause.OnConflict{
+			Columns: []clause.Column{{Name: "hs_id"}}, // 根据 hs_id 判断冲突
+			DoUpdates: clause.AssignmentColumns([]string{
+				"name_en",
+				"name_zh",
+				"mana_cost",
+				"text_en",
+				"text_zh",
+				"image_en",
+				"image_zh",
+				"trinket_type",
+			}),
+		},
+	).Create(&lesserTrinkets).Error
+	if err != nil {
+		log.Fatalf("写入<小饰品数据>到数据库失败: %v", err)
+	}
+
+	log.Println("✅ 酒馆战旗<饰品数据>数据库同步完成")
 }

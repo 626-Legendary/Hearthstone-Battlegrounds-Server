@@ -2,13 +2,15 @@ package models
 
 import "time"
 
-// Card 表示一个战棋随从/卡牌
+// Card 表示一个战棋随从/卡牌 不需要写入数据库
 type Card struct {
-	ID   uint `json:"id" gorm:"primaryKey;autoIncrement"`
-	HSID int  `json:"hs_id" gorm:"uniqueIndex"` // 暴雪官方 card id
+	HSID int `json:"hs_id" ` // 暴雪官方 card id
 
-	NameEN string `json:"name_en"` // 英文名
-	NameZH string `json:"name_zh"` // 中文名
+	ClassID       int   `json:"classId"`
+	MultiClassIds []int `json:"multiClassIds"` // 多职业卡牌的其他职业 ID 列表
+
+	ManaCost int               `json:"manacost"` // 花费
+	Name     map[string]string `json:"name"`     // 卡牌名称，key 为语言代号
 
 	Tier   int `json:"tier"`   // 酒馆等级
 	Attack int `json:"attack"` // 攻击
@@ -38,7 +40,6 @@ type Card struct {
 	DuosOnly  bool `json:"duos_only"`  // 仅双人
 
 	// 多对多：关键词
-	Keywords []Keywords `json:"keywords" gorm:"many2many:card_keywords;"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
