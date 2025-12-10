@@ -57,7 +57,7 @@ func main() {
 		},
 	).Create(&heroes).Error
 	if err != nil {
-		log.Fatalf("写入英雄数据到数据库失败: %v", err)
+		log.Fatalf("写入<英雄数据>到数据库失败: %v", err)
 	}
 
 	log.Println("✅ 酒馆战旗<英雄数据>数据库同步完成")

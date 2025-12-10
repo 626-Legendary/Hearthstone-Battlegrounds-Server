@@ -91,7 +91,7 @@ func InitDB() {
 	log.Println("✅ GORM 已成功连接数据库")
 
 	// 3. 自动迁移模型
-	if err := DB.AutoMigrate(&models.Hero{}); err != nil {
+	if err := DB.AutoMigrate(&models.Heroes{}); err != nil {
 		log.Fatalf("❌ 自动迁移 Hero 表失败: %v", err)
 	}
 

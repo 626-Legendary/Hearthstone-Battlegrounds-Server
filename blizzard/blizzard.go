@@ -102,12 +102,12 @@ func GetAccessToken(clientID, clientSecret string) (*TokenResponse, error) {
 }
 
 // GetBattlegroundHero 自动翻页，返回所有战棋英雄
-func GetBattlegroundHero(accessToken string) ([]models.Hero, error) {
+func GetBattlegroundHero(accessToken string) ([]models.Heroes, error) {
 	region := "us" // us / eu / kr / tw
 	pageSize := 50
 	page := 1
 
-	allHeroes := []models.Hero{}
+	allHeroes := []models.Heroes{}
 
 	for {
 		url := fmt.Sprintf(
@@ -150,7 +150,7 @@ func GetBattlegroundHero(accessToken string) ([]models.Hero, error) {
 		}
 
 		for _, c := range cr.Cards {
-			hero := models.Hero{
+			hero := models.Heroes{
 				HSID: c.ID,
 				// 现在 API 只有一个 name（locale = zh_CN），先当成中文名
 				NameEN:      c.Name["en_US"], // 以后可以再补英文
