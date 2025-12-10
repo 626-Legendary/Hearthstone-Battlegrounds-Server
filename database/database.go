@@ -90,10 +90,21 @@ func InitDB() {
 
 	log.Println("✅ GORM 已成功连接数据库")
 
-	// 3. 自动迁移模型
-	if err := DB.AutoMigrate(&models.Heroes{}); err != nil {
-		log.Fatalf("❌ 自动迁移 Hero 表失败: %v", err)
+	// 3. 自动迁移模型（包含所有 models 下的主要表以及多对多 关联表）
+	if err := DB.AutoMigrate(
+		&models.Card{},
+		&models.Heroes{},
+		&models.Classes{},
+		&models.Keywords{},
+		&models.Minions{},
+		&models.Anomalies{},
+		&models.Quests{},
+		&models.Rewards{},
+		&models.Spells{},
+		&models.Trinkets{},
+	); err != nil {
+		log.Fatalf("❌ 自动迁移模型表失败: %v", err)
 	}
 
-	log.Println("✅ Hero 表结构已创建或更新完成")
+	log.Println("✅ 所有模型表已创建或更新完成")
 }

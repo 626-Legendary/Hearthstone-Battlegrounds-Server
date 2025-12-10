@@ -7,7 +7,7 @@ type Classes struct {
 	NameEN string `gorm:"column:name_en"`
 	NameZH string `gorm:"column:name_zh"`
 
-	Minions []Minion `gorm:"many2many:keyword_minion;"`
+	Minions []Minions `gorm:"many2many:class_minions;"`
 }
 
 func (Classes) TableName() string {

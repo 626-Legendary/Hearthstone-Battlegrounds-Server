@@ -1,8 +1,7 @@
-// models/hero.go
 package models
 
-// models/hero.go
-type Hero struct {
+// Heroes 表示一个酒馆战旗英雄
+type Heroes struct {
 	ID          uint   `gorm:"primaryKey;autoIncrement"`
 	HSID        int    `gorm:"column:hs_id;uniqueIndex"`
 	NameEN      string `gorm:"column:name_en"`
@@ -16,6 +15,6 @@ type Hero struct {
 	IsSolo      bool   `gorm:"column:is_solo"`
 }
 
-func (Hero) TableName() string {
+func (Heroes) TableName() string {
 	return "heroes"
 }

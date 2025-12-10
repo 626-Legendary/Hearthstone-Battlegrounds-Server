@@ -1,12 +1,19 @@
+// models/hero.go
 package models
 
-// Keyword 表示一个战棋关键词（嘲讽、圣盾、亡语……）
-type Keyword struct {
-	ID     uint   `json:"id" gorm:"primaryKey"`
-	HSID   int    `json:"hs_id" gorm:"uniqueIndex"` // 暴雪 keywordId
-	Name   string `json:"name"`                     // 英文名
-	NameZh string `json:"name_zh"`                  // 中文名（如果你以后需要的话）
+// models/hero.go
+type Keywords struct {
+	ID      uint      `gorm:"primaryKey;autoIncrement"`
+	HSID    int       `gorm:"column:hs_id;uniqueIndex"`
+	NameEN  string    `gorm:"column:name_en"`
+	NameZH  string    `gorm:"column:name_zh"`
+	TextEN  string    `gorm:"column:text_en"`
+	TextZH  string    `gorm:"column:text_zh"`
+	ImageEN string    `gorm:"column:image_en"`
+	ImageZH string    `gorm:"column:image_zh"`
+	Minions []Minions `gorm:"many2many:keyword_minions;"`
+}
 
-	// 反向关联，可选
-	Cards []Card `json:"-" gorm:"many2many:card_keywords;"`
+func (Keywords) TableName() string {
+	return "keywords"
 }
