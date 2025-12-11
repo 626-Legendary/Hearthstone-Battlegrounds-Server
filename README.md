@@ -1,9 +1,3 @@
-Here is a **fully polished, professional, clean English-only README.md**, reorganized for clarity and suitable for GitHub.
-
-You can paste it directly into `README.md`.
-
----
-
 # Hearthstone Battlegrounds Backend Server
 
 A High-Performance Encyclopedia Backend for Hearthstone Battlegrounds
@@ -204,7 +198,7 @@ https://us.api.blizzard.com/hearthstone/cards?type=trinket&gameMode=battleground
 
 ## 📄 License
 
-MIT License © 2025 Miao Yu
+MIT License © 2025 ZEXIANG ZHANG
 
 ---
 
@@ -212,14 +206,3 @@ MIT License © 2025 Miao Yu
 
 Contributions, issues, and PRs are welcome.
 Let's make this the **best Battlegrounds encyclopedia platform** available.
-
----
-
-If you'd like, I can also generate:
-
-✅ Swagger API documentation
-✅ Postman collection
-✅ Gin router + controller boilerplate
-✅ Dockerfile + docker-compose setup
-
-Just tell me!
