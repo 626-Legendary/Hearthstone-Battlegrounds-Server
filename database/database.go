@@ -92,15 +92,15 @@ func InitDB() {
 
 	// 3. 自动迁移模型（包含所有 models 下的主要表以及多对多 关联表）
 	if err := DB.AutoMigrate(
-		// &models.Card{},
+
 		&models.Heroes{},
-		// &models.Classes{},
+		&models.Classes{},
 		&models.Keywords{},
-		// &models.Minions{},
-		// &models.Anomalies{},
+		&models.Minions{},
+		&models.Anomalies{},
 		&models.Quests{},
-		// &models.Rewards{},
-		// &models.Spells{},
+		&models.Rewards{},
+		&models.Spells{},
 		&models.Trinkets{},
 	); err != nil {
 		log.Fatalf("❌ 自动迁移模型表失败: %v", err)

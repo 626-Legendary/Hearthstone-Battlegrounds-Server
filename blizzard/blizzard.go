@@ -35,6 +35,7 @@ type CardsResponse struct {
 		CardSetID     int    `json:"cardSetId"`
 		RarityID      int    `json:"rarityId"`
 		ArtistName    string `json:"artistName"`
+		Attack        int    `json:"attack"`
 		Health        int    `json:"health"`
 		ManaCost      int    `json:"manaCost"`
 		Armor         int    `json:"armor"`
@@ -471,4 +472,314 @@ func GetQuests(accessToken string) ([]models.Quests, error) {
 
 	fmt.Printf("✅ 任务数据拉取完成，战棋任务数量: %d\n", len(allQuests))
 	return allQuests, nil
+}
+
+// 畸变 //完善代码 api是对的
+func GetAnomalies(accessToken string) ([]models.Anomalies, error) {
+	/*
+		https://us.api.blizzard.com/hearthstone/cards?bgCardType=anomaly
+	*/
+	region := "us" // us / eu / kr / tw
+	pageSize := 50
+	page := 1
+
+	allAnomalies := []models.Anomalies{}
+
+	for {
+		url := fmt.Sprintf(
+			"https://%s.api.blizzard.com/hearthstone/cards?bgCardType=anomaly&pageSize=%d&page=%d",
+			region, pageSize, page,
+		)
+
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("畸变 接口返回状态码 %d: %s", resp.StatusCode, string(bodyBytes))
+		}
+
+		var cr CardsResponse
+		if err := json.Unmarshal(bodyBytes, &cr); err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("✅ <畸变数据> 请求成功 page=%d / pageCount=%d, 本页 card=%d, 总计 card=%d\n",
+			cr.Page, cr.PageCount, len(cr.Cards), cr.CardCount)
+
+		if len(cr.Cards) == 0 {
+			break
+		}
+
+		for _, c := range cr.Cards {
+			an := models.Anomalies{
+				HSID:   c.ID,
+				NameEN: c.Name["en_US"],
+				NameZH: c.Name["zh_CN"],
+
+				TextEN:  c.Text["en_US"],
+				TextZH:  c.Text["zh_CN"],
+				ImageEN: c.Battlegrounds.Image["en_US"],
+				ImageZH: c.Battlegrounds.Image["zh_CN"],
+			}
+			allAnomalies = append(allAnomalies, an)
+		}
+
+		if cr.Page >= cr.PageCount {
+			break
+		}
+		page++
+	}
+
+	fmt.Printf("✅ 自动翻页完成，总共收集到畸变数量: %d\n", len(allAnomalies))
+	return allAnomalies, nil
+}
+
+// Rewards 奖励
+func GetRewards(accessToken string) ([]models.Rewards, error) {
+	/*
+		https://us.api.blizzard.com/hearthstone/cards?bgCardType=reward&gameMode=battlegrounds
+	*/
+	region := "us" // us / eu / kr / tw
+	pageSize := 50
+	page := 1
+
+	allRewards := []models.Rewards{}
+
+	for {
+		url := fmt.Sprintf(
+			"https://%s.api.blizzard.com/hearthstone/cards?bgCardType=reward&gameMode=battlegrounds&pageSize=%d&page=%d",
+			region, pageSize, page,
+		)
+
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("rewards 接口返回状态码 %d: %s", resp.StatusCode, string(bodyBytes))
+		}
+
+		var cr CardsResponse
+		if err := json.Unmarshal(bodyBytes, &cr); err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("✅ <奖励数据> 请求成功 page=%d / pageCount=%d, 本页 card=%d, 总计 card=%d\n",
+			cr.Page, cr.PageCount, len(cr.Cards), cr.CardCount)
+
+		if len(cr.Cards) == 0 {
+			break
+		}
+
+		for _, c := range cr.Cards {
+			r := models.Rewards{
+				HSID: c.ID,
+
+				NameEN: c.Name["en_US"],
+				NameZH: c.Name["zh_CN"],
+
+				TextEN: c.Text["en_US"],
+				TextZH: c.Text["zh_CN"],
+
+				ImageEN: c.Battlegrounds.Image["en_US"],
+				ImageZH: c.Battlegrounds.Image["zh_CN"],
+			}
+			allRewards = append(allRewards, r)
+		}
+
+		if cr.Page >= cr.PageCount {
+			break
+		}
+		page++
+	}
+
+	fmt.Printf("✅ 自动翻页完成，总共收集到奖励数量: %d\n", len(allRewards))
+	return allRewards, nil
+}
+
+// Spells 法术（非任务）
+func GetSpells(accessToken string) ([]models.Spells, error) {
+	/*
+		https://us.api.blizzard.com/hearthstone/cards?bgCardType=spell&gameMode=battlegrounds
+		注意：任务已经用 GetQuests(type=spell&sort=quest) 单独拉了，这里拉普通战棋法术
+	*/
+	region := "us"
+	pageSize := 50
+	page := 1
+
+	allSpells := []models.Spells{}
+
+	for {
+		url := fmt.Sprintf(
+			"https://%s.api.blizzard.com/hearthstone/cards?bgCardType=spell&gameMode=battlegrounds&pageSize=%d&page=%d",
+			region, pageSize, page,
+		)
+
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("spells 接口返回状态码 %d: %s", resp.StatusCode, string(bodyBytes))
+		}
+
+		var cr CardsResponse
+		if err := json.Unmarshal(bodyBytes, &cr); err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("✅ <法术数据> 请求成功 page=%d / pageCount=%d, 本页 card=%d, 总计 card=%d\n",
+			cr.Page, cr.PageCount, len(cr.Cards), cr.CardCount)
+
+		if len(cr.Cards) == 0 {
+			break
+		}
+
+		for _, c := range cr.Cards {
+			// 如果想排除任务，可以加：
+			// if c.Battlegrounds.Quest { continue }
+
+			s := models.Spells{
+				HSID: c.ID,
+
+				NameEN: c.Name["en_US"],
+				NameZH: c.Name["zh_CN"],
+
+				TextEN: c.Text["en_US"],
+				TextZH: c.Text["zh_CN"],
+
+				ImageEN: c.Battlegrounds.Image["en_US"],
+				ImageZH: c.Battlegrounds.Image["zh_CN"],
+			}
+			allSpells = append(allSpells, s)
+		}
+
+		if cr.Page >= cr.PageCount {
+			break
+		}
+		page++
+	}
+
+	fmt.Printf("✅ 自动翻页完成，总共收集到法术数量: %d\n", len(allSpells))
+	return allSpells, nil
+}
+
+// Minions 随从
+// Minions 随从
+// Minions 随从
+// Minions 随从
+// classMap: key=HSID, value=Classes 结构体（数据库中已有）
+// Minions 随从
+// classMap: key=HSID, value=Classes 结构体（数据库中已有）
+func GetMinions(accessToken string, classMap map[int]models.Classes) ([]models.Minions, error) {
+
+	region := "us"
+	pageSize := 50
+	page := 1
+
+	all := []models.Minions{}
+
+	for {
+		url := fmt.Sprintf(
+			"https://%s.api.blizzard.com/hearthstone/cards?bgCardType=minion&gameMode=battlegrounds&pageSize=%d&page=%d",
+			region, pageSize, page,
+		)
+
+		req, _ := http.NewRequest(http.MethodGet, url, nil)
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		var cr CardsResponse
+		if json.Unmarshal(body, &cr) != nil {
+			return nil, err
+		}
+
+		if len(cr.Cards) == 0 {
+			break
+		}
+
+		for _, c := range cr.Cards {
+
+			// classId + multiClassIds → classIDs JSON
+			cls := []int{}
+			if c.ClassID != 0 {
+				cls = append(cls, c.ClassID)
+			}
+			if len(c.MultiClassIds) > 0 {
+				cls = append(cls, c.MultiClassIds...)
+			}
+			classJSON, _ := json.Marshal(cls)
+
+			childJSON, _ := json.Marshal(c.ChildIDs)
+
+			m := models.Minions{
+				HSID:     c.ID,
+				NameEN:   c.Name["en_US"],
+				NameZH:   c.Name["zh_CN"],
+				TextEN:   c.Text["en_US"],
+				TextZH:   c.Text["zh_CN"],
+				Attack:   c.Attack,
+				Health:   c.Health,
+				ChildIDs: childJSON,
+				ClassIDs: classJSON,
+				ImageEN:  c.Battlegrounds.Image["en_US"],
+				ImageZH:  c.Battlegrounds.Image["zh_CN"],
+				IsDuo:    c.Battlegrounds.DuosOnly,
+				IsSolo:   c.Battlegrounds.SolosOnly,
+			}
+
+			all = append(all, m)
+		}
+
+		page++
+	}
+
+	return all, nil
 }
